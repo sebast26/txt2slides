@@ -19,8 +19,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = service.CreateSlides("", string(buf))
+	presentation, err := service.CreateSlides("", string(buf))
 	if err != nil {
 		panic(err)
 	}
+
+	println(presentation.Location)
 }
