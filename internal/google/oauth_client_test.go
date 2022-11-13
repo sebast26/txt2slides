@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/sebast26/txt2gdoc/internal/google"
+	"github.com/sebast26/txt2slides/internal/google"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 	"net/http"

@@ -32,28 +32,30 @@ func NewSlidesService(oauthClient *http.Client) (*SlidesService, error) {
 	return &SlidesService{gSlides: srv, gDrive: drv}, nil
 }
 
-func (s *SlidesService) CreateSlides(prefix, content string) error {
+func (s *SlidesService) CreateSlides(prefix, content string) (Presentation, error) {
 	// create presentation
 	file := drive.File{Title: fmt.Sprintf("%s - test slides", prefix)}
 	copiedFile, err := s.gDrive.Files.Copy(templateFileID, &file).Do()
 	if err != nil {
-		return errors.Wrap(err, "failed to copy from template file")
+		return Presentation{}, errors.Wrap(err, "failed to copy from template file")
 	}
 	presentation, err := s.gSlides.Presentations.Get(copiedFile.Id).Do()
 	if err != nil {
-		return errors.Wrap(err, "failed to create presentation file")
+		return Presentation{}, errors.Wrap(err, "failed to create presentation file")
 	}
 
-	// chunks
-	// TODO: should be split by empty lines not \n
 	chunks := strings.Split(content, "\n")
 
-	_, err = s.createEmptySlides(presentation.PresentationId, chunks)
+	slideIDs, err := s.createEmptySlides(presentation.PresentationId, chunks)
 	if err != nil {
-		return errors.Wrap(err, "failed to create empty slides")
+		return Presentation{}, errors.Wrap(err, "failed to create empty slides")
 	}
 
-	return nil
+	err = s.insertText(presentation.PresentationId, chunks, slideIDs)
+	if err != nil {
+		return Presentation{}, errors.Wrap(err, "failed to insert text into slides")
+	}
+	return NewPresentation(presentation.PresentationId), nil
 }
 
 // create empty slides
@@ -78,6 +80,23 @@ func (s *SlidesService) createEmptySlides(presentationID string, chunks []string
 		objectIDs = append(objectIDs, reply.CreateSlide.ObjectId)
 	}
 	return objectIDs, nil
+}
+
+func (s *SlidesService) insertText(presentationID string, chunks []string, slideIDs []string) error {
+	var requests []*slides.Request
+	for i, chunk := range chunks {
+		slide, err := s.gSlides.Presentations.Pages.Get(presentationID, slideIDs[i]).Do()
+		if err != nil {
+			return errors.Wrap(err, "failed to get slide")
+		}
+		titleID := slide.PageElements[0].ObjectId
+		requests = append(requests, &slides.Request{InsertText: &slides.InsertTextRequest{ObjectId: titleID, InsertionIndex: 0, Text: chunk}})
+	}
+	_, err := s.gSlides.Presentations.BatchUpdate(presentationID, &slides.BatchUpdatePresentationRequest{Requests: requests}).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to fill out slide content")
+	}
+	return nil
 }
 
 const (
