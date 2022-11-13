@@ -44,6 +44,7 @@ func (s *SlidesService) CreateSlides(prefix, content string) (Presentation, erro
 		return Presentation{}, errors.Wrap(err, "failed to create presentation file")
 	}
 
+	// TODO: do not split over \n, but over empty line
 	chunks := strings.Split(content, "\n")
 
 	slideIDs, err := s.createEmptySlides(presentation.PresentationId, chunks)
