@@ -1,6 +1,7 @@
 package google
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/google/uuid"
@@ -44,8 +45,8 @@ func (s *SlidesService) CreateSlides(prefix, content string) (Presentation, erro
 		return Presentation{}, errors.Wrap(err, "failed to create presentation file")
 	}
 
-	// TODO: do not split over \n, but over empty line
-	chunks := strings.Split(content, "\n")
+	// TODO: add support for "empty slide" separator, ie: ---
+	chunks := splitOverEmptyLines(content)
 
 	slideIDs, err := s.createEmptySlides(presentation.PresentationId, chunks)
 	if err != nil {
@@ -57,6 +58,24 @@ func (s *SlidesService) CreateSlides(prefix, content string) (Presentation, erro
 		return Presentation{}, errors.Wrap(err, "failed to insert text into slides")
 	}
 	return NewPresentation(presentation.PresentationId), nil
+}
+
+func splitOverEmptyLines(content string) []string {
+	var out []string
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	var sb strings.Builder
+	var line string
+	for scanner.Scan() {
+		line = scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			out = append(out, sb.String())
+			sb.Reset()
+			continue
+		}
+		sb.WriteString(fmt.Sprintf("%s\n", line))
+	}
+	out = append(out, line)
+	return out
 }
 
 // create empty slides
