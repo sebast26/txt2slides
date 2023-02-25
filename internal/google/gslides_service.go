@@ -45,7 +45,6 @@ func (s *SlidesService) CreateSlides(prefix, content string) (Presentation, erro
 		return Presentation{}, errors.Wrap(err, "failed to create presentation file")
 	}
 
-	// TODO: add support for "empty slide" separator, ie: ---
 	chunks := splitOverEmptyLines(content)
 
 	slideIDs, err := s.createEmptySlides(presentation.PresentationId, chunks)
@@ -72,9 +71,15 @@ func splitOverEmptyLines(content string) []string {
 			sb.Reset()
 			continue
 		}
+		if strings.TrimSpace(line) == "---" {
+			out = append(out, sb.String())
+			sb.Reset()
+			out = append(out, "")
+			continue
+		}
 		sb.WriteString(fmt.Sprintf("%s\n", line))
 	}
-	out = append(out, line)
+	out = append(out, sb.String())
 	return out
 }
 
